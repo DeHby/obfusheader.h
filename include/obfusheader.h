@@ -23,8 +23,8 @@ Visit https://github.com/ac3ss0r/obfusheader.h for configuration tips & more inf
 #define CONST_ENCRYPT_MODE NORMAL // NORMAL & THREADLOCAL
 #define CFLOW_CONST_DECRYPTION 1
 // C & C++ features
-#define CFLOW_BRANCHING 0
-#define INDIRECT_BRANCHING 0
+#define CFLOW_BRANCHING 1
+#define INDIRECT_BRANCHING 1
 #define FAKE_SIGNATURES 0
 #define INLINE_STD 0
 #define KERNEL_MODE 0
@@ -79,18 +79,12 @@ Visit https://github.com/ac3ss0r/obfusheader.h for configuration tips & more inf
 #define INLINE inline __attribute__((always_inline)) // GCC/G++/CLANG
 #endif
 
+
 // Prevents functions from inlining forcefully
 #ifdef _MSVC
-#define NOINLINE __declspec(noinline)
-#else
-#define NOINLINE __attribute__((noinline, used))
-#endif
-
-// Create custom sections on both clang & msc++
-#ifdef _MSVC
-#define SECTION(x) __declspec(allocate(x))
-#else
-#define SECTION(x) __attribute__((section(x)))
+    #define NOINLINE __declspec(noinline)
+#else 
+    #define NOINLINE __attribute__((noinline,used))
 #endif
 
 // The casting to support both C and C++
@@ -164,11 +158,14 @@ static constexpr int CTime = __TIME__[0] + __TIME__[1] + __TIME__[3] + __TIME__[
 #define _FALSE ((_3 + __6() + ((_RND * __3()) * _0)) - __9())
 #define XOR(x, y) (x + y - (2 * (x & y)))
 
+#ifndef OB_JUNK
 
 #ifdef NDEBUG
 #define OB_JUNK() obfusheader_inline_junk<RND(1,6)>()
 #else
 #define OB_JUNK() ((void)0)
+#endif
+
 #endif
 
 template <unsigned int Dummy>
@@ -261,16 +258,16 @@ static volatile char _a = 'a', _b = 'b', _c = 'c', _d = 'd', _e = 'e', _f = 'f',
                      _q = 'q', _r = 'r', _s = 's', _t = 't', _u = 'u', _v = 'v', _w = 'w', _x = 'x', _y = 'y', _z = 'z', _S = 'S', _L = 'L', _A = 'A', _I = 'I', _D = 'D', _P = 'P';
 static volatile char _0 = 0, _1 = 1, _2 = 2, _3 = 3, _4 = 4, _5 = 5, _6 = 6, _7 = 7, _8 = 8, _9 = 9;
 // Same trick with NOINLINED functions (proxies)
-static NOINLINE char __0() { return 0; }
-static NOINLINE char __1() { return 1; }
-static NOINLINE char __2() { return 2; }
-static NOINLINE char __3() { return 3; }
-static NOINLINE char __4() { return 4; }
-static NOINLINE char __5() { return 5; }
-static NOINLINE char __6() { return 6; }
-static NOINLINE char __7() { return 7; }
-static NOINLINE char __8() { return 8; }
-static NOINLINE char __9() { return 9; }
+static NOINLINE char __0() { __asm__ volatile("" ::: "memory"); return 0; }
+static NOINLINE char __1() { __asm__ volatile("" ::: "memory"); return 1; }
+static NOINLINE char __2() { __asm__ volatile("" ::: "memory"); return 2; }
+static NOINLINE char __3() { __asm__ volatile("" ::: "memory"); return 3; }
+static NOINLINE char __4() { __asm__ volatile("" ::: "memory"); return 4; }
+static NOINLINE char __5() { __asm__ volatile("" ::: "memory"); return 5; }
+static NOINLINE char __6() { __asm__ volatile("" ::: "memory"); return 6; }
+static NOINLINE char __7() { __asm__ volatile("" ::: "memory"); return 7; }
+static NOINLINE char __8() { __asm__ volatile("" ::: "memory"); return 8; }
+static NOINLINE char __9() { __asm__ volatile("" ::: "memory"); return 9; }
 #endif
 
 // Easily build hardcoded control-flow protection blocks
@@ -375,10 +372,9 @@ __attribute__((used)) static void obfusheader_decoy_10() {__asm__ volatile("" ::
 #define false 0
 
 // Normal & threadlocal encryption modes
-#define OBF_KEY_NORMAL(x, type, size, key) []()-> decltype(auto) {\
+#define OBF_KEY_NORMAL(x, type, size, key) []() {\
     constexpr static auto result = obf::obfuscator<type, size, key>(x);\
-    return result; \
-}()
+    return result; }() 
 #define OBF_KEY_THREADLOCAL(x, type, size, key) []() {\
     constexpr static auto data = obf::obfuscator<type, size, key>(x);\
     thread_local auto decryptor = obf::decryptor<type, size, key>(data);\
@@ -392,7 +388,7 @@ __attribute__((used)) static void obfusheader_decoy_10() {__asm__ volatile("" ::
 #elif CONST_ENCRYPT_MODE == THREADLOCAL
 #define MAKEOBF(x) MAKEOBF_THREADLOCAL(x)
 #endif
-#define OBF(x) (MAKEOBF(x))
+#define OBF(x) ((meta::decay_t<decltype(x)>) MAKEOBF(x))
 #else
 #define MAKEOBF(x) x
 #define OBF(x) x
@@ -861,8 +857,17 @@ namespace obf
 #elif defined(_WINDOWS)
 #define CALL_EXPORT(lib, mtd, def) ((def)(GetProcAddress(LoadLibraryA(lib), mtd)))
 #endif
+
 #endif
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdangling-else"
+#endif
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+#endif
 // Obviously affects performance. Use with caution!
 #if CFLOW_BRANCHING
 #define OBF_IF(x)  \
@@ -892,6 +897,7 @@ namespace obf
 #define OBF_ELSE else
 
 #endif
+
 
 #pragma endregion OBFUSCATION
 
